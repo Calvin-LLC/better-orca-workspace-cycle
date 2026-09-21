@@ -1,9 +1,6 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 
-; Ctrl+Shift+digit = workspace.selectByIndex, Ctrl+PgDn = tab.nextTerminal.
-; $ stops Send in this file retriggering these hotkeys.
-
 RepeatGuardMs := 150
 
 #HotIf WinActive("ahk_exe Orca.exe") and !GetKeyState("Shift", "P") and !GetKeyState("Alt", "P") and !GetKeyState("LWin", "P") and !GetKeyState("RWin", "P")

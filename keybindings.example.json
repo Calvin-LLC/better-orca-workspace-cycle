@@ -5,7 +5,14 @@
   },
   "platforms": {
     "darwin": {},
-    "linux": {},
+    "linux": {
+      "workspace.selectByIndex": [
+        "Mod+Shift+1"
+      ],
+      "tab.nextTerminal": [
+        "Ctrl+PageDown"
+      ]
+    },
     "win32": {
       "tab.selectByIndex": [
         "Mod+1"
@@ -24,6 +31,9 @@
       ],
       "tab.previousAllTypes": [
         "Mod+Alt+BracketLeft"
+      ],
+      "tab.nextTerminal": [
+        "Ctrl+PageDown"
       ]
     }
   }

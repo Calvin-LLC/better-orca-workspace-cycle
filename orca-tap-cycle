@@ -66,8 +66,15 @@ def send_shortcut(mods: str, key: str) -> None:
     # legacy string form (`hyprctl dispatch sendshortcut CTRL, 1, active`)
     # dies with a parse error. Go through `hyprctl eval` with the Lua
     # dispatcher instead; probed working on Hyprland 0.56.2.
+    # window='class:orca' targets the Orca window even when it is not
+    # focused (bare sends land on whatever has focus; address and
+    # plain-class forms report "window not found").
     snippet = (
-        "hl.dispatch(hl.dsp.send_shortcut({mods='" + mods + "', key='" + key + "'}))"
+        "hl.dispatch(hl.dsp.send_shortcut({mods='"
+        + mods
+        + "', key='"
+        + key
+        + "', window='class:orca'}))"
     )
     subprocess.run(["hyprctl", "eval", snippet], capture_output=True, timeout=5)
 

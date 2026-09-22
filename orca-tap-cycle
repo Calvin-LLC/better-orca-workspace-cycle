@@ -8,16 +8,16 @@ mirrors orca-tap-cycle.ahk (Windows/AutoHotkey v2) without needing a
 timing window.
 
 Hyprland calls this with one argument (the digit 1-9). The helper sends
-the real chord to the focused Orca window via hyprctl send_shortcut:
+the real chord straight to the Orca window via hyprctl send_shortcut
+with window='class:orca', so it works whether or not Orca has focus.
 
   orca-tap-cycle 3        # first tap:  Ctrl+Shift+3 (workspace 3)
   orca-tap-cycle 3        # second tap: Ctrl+Page_Down (next terminal tab)
   orca-tap-cycle 4        # different:  Ctrl+Shift+4 (workspace 4)
 
-Outside Orca focus the helper re-emits the plain key untouched so other
-apps keep their Ctrl+digit behavior.
-
 State lives in ~/.local/state/orca-tap-cycle.json (last digit only).
+The helper always targets the Orca window directly, so no focus check
+is needed: other apps never see the chord because Hyprland consumed it.
 Requires: Hyprland (hyprctl), Orca with win32/linux keybindings at
 workspace.selectByIndex=Mod+Shift+1 and default tab.nextTerminal.
 """
@@ -32,33 +32,6 @@ STATE_PATH = os.path.join(
     os.environ.get("XDG_STATE_HOME", os.path.join(os.path.expanduser("~"), ".local", "state")),
     "orca-tap-cycle.json",
 )
-ORCA_CLASSES = ("orca", "orca-ide")
-
-
-def active_class() -> str:
-    try:
-        out = subprocess.run(
-            ["hyprctl", "activewindow", "-j"],
-            capture_output=True, text=True, timeout=5,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    if out.returncode != 0:
-        return ""
-    try:
-        data = json.loads(out.stdout or "{}")
-    except json.JSONDecodeError:
-        return ""
-    for key in ("initialClass", "class"):
-        value = data.get(key)
-        if value:
-            return str(value)
-    return ""
-
-
-def in_orca() -> bool:
-    cls = active_class().lower()
-    return any(tag in cls for tag in ORCA_CLASSES)
 
 
 def send_shortcut(mods: str, key: str) -> None:
@@ -104,10 +77,6 @@ def main(argv: list[str]) -> int:
         print(f"usage: {os.path.basename(argv[0])} <digit 1-9>", file=sys.stderr)
         return 2
     digit = argv[1]
-    if not in_orca():
-        # Not Orca: put the key back so the focused app behaves normally.
-        send_shortcut("CTRL", digit)
-        return 0
     state = load_state()
     if state.get("digit") == digit:
         send_shortcut("CTRL", "Page_Down")

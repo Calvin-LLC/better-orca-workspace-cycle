@@ -1,48 +1,44 @@
 # better-orca-workspace-cycle
 
-Orca gives Ctrl+number one job. This gives it two. Tap the number once and
-you jump to that workspace. Tap it again and you step through the terminal
-tabs inside it. It keeps cycling until you tap a different number.
+Orca gives Ctrl+number one job. This gives it two. Tap a number and jump to that Orca workspace. Tap the same number again and step to the next terminal tab inside it. Cycling continues until you tap a different number, which jumps and re-arms.
 
-Needs Orca, plus AutoHotkey v2 on Windows or Hyprland on Linux.
+Windows runs it through AutoHotkey v2. Linux runs it through Hyprland.
 
-## Keybindings
+## Orca keybindings
 
-Check your Orca keybindings first. Open `~/.orca/keybindings.json` and make
-sure the `win32` block (Windows) or `linux` block (Linux) has:
+The helper sends two chords, so Orca must read them as two commands. Open `~/.orca/keybindings.json` and check the block for your platform, `win32` or `linux`.
 
-```json
-"workspace.selectByIndex": ["Mod+Shift+1"],
-"tab.nextTerminal": ["Ctrl+PageDown"]
-```
+- `workspace.selectByIndex` must be `Mod+Shift+1`. Orca maps `Mod` to `Ctrl`, so this is the `Ctrl+Shift+digit` jump chord.
+- `tab.nextTerminal` must be `Ctrl+PageDown`, the Orca default. The cycle step sends that chord, so leave the binding alone unless you change the send to match.
+- On Linux, clear `tab.selectByIndex` to `[]`. The Linux helper lets the real Ctrl+digit reach Orca while it works, which would otherwise also select a tab. The Windows helper swallows the key before Orca sees it, so the `win32` block may keep its binding.
 
-`tab.nextTerminal` is the Orca default. `keybindings.example.json` in this
-repo shows both lines in place. Set `workspace.selectByIndex` to
-`Mod+Shift+1` if yours differs. Orca maps `Mod` to `Ctrl`. The cycle step sends plain `Ctrl+PageDown`,
-so leave that binding on the default unless you edit the Send line
-to match.
+`keybindings.example.json` shows a working block for both platforms. Copy the lines you need if your keybindings have other entries.
 
 ## Windows
 
-1. Install AutoHotkey v2 (per-user default, or per-machine; the
-   launcher also checks `where AutoHotkey64.exe`).
-2. Double-click `start-tap-cycle.cmd`.
+Install AutoHotkey v2 and double-click `start-tap-cycle.cmd`. The launcher checks the per-user and per-machine install paths and then `PATH`, and it fails with a message if the exe or `orca-tap-cycle.ahk` is missing. Keep the launcher and the `.ahk` file in the same folder.
 
-`Ctrl+3` jumps to workspace 3. `Ctrl+3` again steps to the next terminal
-tab there. `Ctrl+4` jumps to workspace 4 and arms 4 for cycling.
+The hotkeys exist only while the Orca window is focused, so Ctrl+number behaves normally in every other app. `Ctrl+3` jumps to workspace 3 and `Ctrl+3` again steps to the next terminal tab there. `Ctrl+4` jumps to workspace 4 and arms 4.
 
-Put a shortcut to `start-tap-cycle.cmd` in `shell:startup` to run it on
-every login.
+Put a shortcut to `start-tap-cycle.cmd` in `shell:startup` to run it at every login.
 
 ## Linux (Hyprland)
 
-`orca-tap-cycle` is the same sticky helper for Hyprland: first tap of a
-digit sends `Ctrl+Shift+digit` (jump), repeats send `Ctrl+PageDown`
-(cycle). Outside Orca focus it re-emits the plain key so other apps keep
-their Ctrl+digit behavior.
+Link `orca-tap-cycle` somewhere on `PATH`, then bind one non-consuming keybind per digit. Non-consuming is the part that keeps Ctrl+number working in browsers and terminals, because a normal Hyprland bind swallows the keystroke before the app sees it.
 
-1. Link it somewhere on PATH.
-2. Add one bind per digit to your Hyprland config.
+```lua
+for i = 1, 9 do
+    local key = tostring(i % 10)
+    hl.bind("CTRL + " .. key, hl.dsp.exec_cmd(
+        os.getenv("HOME") .. "/.local/bin/orca-tap-cycle " .. key), { non_consuming = true })
+end
+```
+
+The helper checks the focused window and exits immediately outside Orca. Inside Orca it runs the same sticky jump-then-cycle behavior as Windows. The last digit it acted on lives in `~/.local/state/orca-tap-cycle.json`.
+
+## Files
+
+`orca-tap-cycle` is the Linux helper. `orca-tap-cycle.ahk` is the Windows helper and `start-tap-cycle.cmd` is its launcher. `keybindings.example.json` is the Orca keybindings reference. `docs/keybindings.md` goes deeper on the chord contract and `docs/troubleshooting.md` covers the common failures.
 
 ## License
 

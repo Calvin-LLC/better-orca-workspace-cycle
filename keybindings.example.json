@@ -6,6 +6,7 @@
   "platforms": {
     "darwin": {},
     "linux": {
+      "tab.selectByIndex": [],
       "workspace.selectByIndex": [
         "Mod+Shift+1"
       ],

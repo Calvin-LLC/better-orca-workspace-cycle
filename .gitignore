@@ -1,3 +1,5 @@
 *.exe
 Thumbs.db
 Desktop.ini
+__pycache__/
+.mypy_cache/

@@ -2,19 +2,48 @@
 
 One key, two jobs. Press a number and you swap to that Orca workspace. Press the same number again while you are there and you step to the next terminal tab. Press a different number and you swap again.
 
-Windows runs it through AutoHotkey v2. Linux runs it inside Hyprland's config with no helper process.
+The behavior is identical everywhere. Windows runs it through AutoHotkey v2. Linux runs `orca-tap-cycle`, a portable handler any hotkey system can invoke, with an optional zero-fork Hyprland fast path.
+
+## Behavior
+
+In Orca, Ctrl+N jumps to workspace N, or steps to the next terminal tab when N is the workspace you are already in. Everywhere else Ctrl+number does exactly what that app expects. A 150ms per-digit guard swallows key auto-repeat.
 
 ## Orca keybindings
 
 Open `~/.orca/keybindings.json` and check the block for your platform, `win32` or `linux`. Orca maps `Mod` to `Ctrl`.
 
+- `workspace.selectByIndex` must be `Mod+Shift+1` on both platforms. The helper sends `Ctrl+Shift+digit` to jump, and that chord is what Orca answers.
 - `tab.nextTerminal` must be `Ctrl+PageDown`, the Orca default. The cycle step sends that chord.
-- On Linux, `workspace.selectByIndex` must be `Mod+1` and `tab.selectByIndex` must be `[]`. The real Ctrl+digit does the swap natively, so the keybinding has to own that chord, and the cleared tab binding keeps one press from doing two things.
-- On Windows, `workspace.selectByIndex` must be `Mod+Shift+1`. The hotkey swallows Ctrl+digit and sends that chord itself, so `tab.selectByIndex` may keep `Mod+1`.
+- On Linux, keep `tab.selectByIndex` at `[]`. One press then does exactly one thing.
 
 `keybindings.example.json` shows a working block for both platforms. Copy the lines you need if your keybindings have other entries.
 
-Restart Orca after editing keybindings.json. Orca reads the file at startup, so a live edit silently does nothing.
+Orca reads keybindings.json at startup. Restart it after editing the file.
+
+## Platform support
+
+| Platform | Mechanism | Status |
+| --- | --- | --- |
+| Windows | `orca-tap-cycle.ahk` on AutoHotkey v2 | Full |
+| Linux, Hyprland | `orca-tap-cycle.lua` inside the compositor | Full, zero forks |
+| Linux, Sway | `orca-tap-cycle` with `swaymsg` and `wtype` | Full |
+| Linux, X11 | `orca-tap-cycle` with `xdotool` | Full |
+| Linux, other Wayland | `orca-tap-cycle` with `wtype` | Pass-through only. Wayland hides the focused window from scripts, so Ctrl+number keeps working in apps while tap-cycle stays inert |
+
+## Linux (portable handler)
+
+Link `orca-tap-cycle` somewhere on `PATH`, then bind Ctrl+1 through Ctrl+9 to `orca-tap-cycle 1` through `orca-tap-cycle 9` in your desktop's global shortcut settings. The hotkey must consume the key. The handler re-emits the chord itself, so a second delivery of the original key would double-fire.
+
+- sxhkd binds `ctrl + {1-9}` to `orca-tap-cycle {1-9}`.
+- GNOME takes one custom shortcut per digit in Settings, Keyboard.
+- KDE takes one command per digit in System Settings, Shortcuts.
+- i3 and sway take `bindsym ctrl+1 exec orca-tap-cycle 1` and friends.
+
+Install the tool your session needs for chords. Hyprland uses `hyprctl`, Sway uses `swaymsg` and `wtype`, X11 uses `xdotool`, other Wayland uses `wtype`.
+
+## Linux (Hyprland fast path)
+
+`orca-tap-cycle.lua` is the same state machine compiled into the compositor. Paste it at the end of your Hyprland Lua config or `dofile` it, then reload. Nothing forks per keypress, so the chord lands instantly even on a loaded box. The keybindings contract above is identical.
 
 ## Windows
 
@@ -24,61 +53,9 @@ The hotkeys exist only while the Orca window is focused, so Ctrl+number behaves 
 
 Put a shortcut to `start-tap-cycle.cmd` in `shell:startup` to run it at every login.
 
-## Linux (Hyprland)
-
-Paste this block into your Hyprland Lua config and reload. On this setup it lives at the end of `hypr-user.lua`.
-
-```lua
--- /proc/uptime supplies sub-second time; os.time() is whole seconds.
-local tapStatePath = os.getenv("HOME") .. "/.local/state/orca-tap-cycle.json"
-
-local function tap_now()
-    local f = io.open("/proc/uptime", "r")
-    if not f then return os.time() end
-    local v = tonumber((f:read("*l") or ""):match("^([%d%.]+)"))
-    f:close()
-    return v or os.time()
-end
-
-local function tap_load()
-    local f = io.open(tapStatePath, "r")
-    if not f then return nil, -1 end
-    local raw = f:read("*a") or ""
-    f:close()
-    return raw:match('"digit"%s*:%s*"?(%d)"?'), tonumber(raw:match('"ts"%s*:%s*([%d%.]+)')) or -1
-end
-
-local function tap_save(digit, ts)
-    local f = io.open(tapStatePath, "w")
-    if not f then return end
-    f:write(string.format('{"digit": "%s", "ts": %.2f}', digit, ts))
-    f:close()
-end
-
-for i = 1, 9 do
-    local key = tostring(i % 10)
-    hl.bind("CTRL + " .. key, function()
-        local win = hl.get_active_window()
-        local cls = win and ((win.class or "") .. " " .. (win.initial_class or "")):lower() or ""
-        if not cls:find("orca", 1, true) then return end
-        local now = tap_now()
-        local last, last_ts = tap_load()
-        if last == key and now - last_ts < 0.15 then return end
-        if last == key then
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "Page_Down", window = "class:orca" }))
-        end
-        tap_save(key, now)
-    end, { non_consuming = true })
-end
-```
-
-The block runs inside the compositor. Ctrl+digit reaches whatever app is focused untouched, and in Orca the keybinding does the swap instantly. The helper only fires when the pressed digit matches the workspace it believes you are in, sending `Ctrl+PageDown` to step the terminal tab. A 150ms per-digit guard swallows key auto-repeat.
-
-The believed workspace lives in `~/.local/state/orca-tap-cycle.json`. If you switch workspaces with the mouse, the next press of the digit you are really on may step a tab before the state resyncs. Any other digit swaps normally.
-
 ## Files
 
-`orca-tap-cycle.ahk` is the Windows helper and `start-tap-cycle.cmd` is its launcher. `keybindings.example.json` is the Orca keybindings reference. `docs/keybindings.md` goes deeper on the chord contract and `docs/troubleshooting.md` covers the common failures.
+`orca-tap-cycle` is the portable Linux handler. `orca-tap-cycle.lua` is the Hyprland fast path. `orca-tap-cycle.ahk` is the Windows helper and `start-tap-cycle.cmd` is its launcher. `keybindings.example.json` is the Orca keybindings reference. `docs/keybindings.md` goes deeper on the chord contract and `docs/troubleshooting.md` covers the common failures.
 
 ## License
 

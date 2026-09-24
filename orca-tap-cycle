@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+STATE_PATH = os.path.join(
+    os.environ.get("XDG_STATE_HOME", os.path.join(os.path.expanduser("~"), ".local", "state")),
+    "orca-tap-cycle.json",
+)
+
+
+def run(cmd: list[str]) -> str:
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout if out.returncode == 0 else ""
+
+
+def detect_backend() -> str:
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
+        return "hyprland"
+    if os.environ.get("SWAYSOCK") and shutil.which("swaymsg"):
+        return "sway"
+    if os.environ.get("DISPLAY") and shutil.which("xdotool"):
+        return "x11"
+    if os.environ.get("WAYLAND_DISPLAY") and shutil.which("wtype"):
+        return "wayland"
+    return "none"
+
+
+def active_class(backend: str) -> str:
+    if backend == "hyprland":
+        try:
+            data = json.loads(run(["hyprctl", "activewindow", "-j"]) or "{}")
+        except json.JSONDecodeError:
+            return ""
+        return f"{data.get('class') or ''} {data.get('initialClass') or ''}"
+    if backend == "sway":
+        try:
+            tree = json.loads(run(["swaymsg", "-t", "get_tree"]) or "{}")
+        except json.JSONDecodeError:
+            return ""
+        stack = [tree]
+        while stack:
+            node = stack.pop()
+            if node.get("focused"):
+                return f"{node.get('app_id') or ''} {(node.get('window_properties') or {}).get('class') or ''}"
+            stack.extend(node.get("nodes") or [])
+            stack.extend(node.get("floating_nodes") or [])
+        return ""
+    if backend == "x11":
+        wid = run(["xdotool", "getactivewindow"]).strip()
+        return run(["xdotool", "getwindowclassname", wid]) if wid else ""
+    return ""
+
+
+def send(backend: str, mods: str, key: str) -> None:
+    if backend == "hyprland":
+        lua = "hl.dispatch(hl.dsp.send_shortcut({mods='%s', key='%s'}))" % (mods, key)
+        run(["hyprctl", "eval", lua])
+        return
+    if backend in ("sway", "wayland"):
+        if not shutil.which("wtype"):
+            return
+        cmd: list[str] = ["wtype"]
+        down = [m.lower() for m in mods.split()]
+        for m in down:
+            cmd += ["-M", m]
+        cmd += ["-P", key, "-p", key]
+        for m in reversed(down):
+            cmd += ["-m", m]
+        run(cmd)
+        return
+    if backend == "x11":
+        chord = "+".join(mods.split() + [key]).lower()
+        run(["xdotool", "key", "--clearmodifiers", chord])
+
+
+def tap_now() -> float:
+    try:
+        with open("/proc/uptime", encoding="utf-8") as handle:
+            return float(handle.read().split()[0])
+    except (OSError, ValueError, IndexError):
+        return time.monotonic()
+
+
+def load_state() -> tuple[str | None, str | None, float]:
+    try:
+        with open(STATE_PATH, encoding="utf-8") as handle:
+            raw = handle.read()
+    except OSError:
+        return None, None, -1.0
+    try:
+        data = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        return None, None, -1.0
+    return data.get("digit"), data.get("last"), float(data.get("ts", -1))
+
+
+def save_state(digit: str, last: str, ts: float) -> None:
+    try:
+        os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+        with open(STATE_PATH, "w", encoding="utf-8") as handle:
+            json.dump({"digit": digit, "last": last, "ts": ts}, handle)
+    except OSError:
+        pass
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2 or len(argv[1]) != 1 or not argv[1].isdigit():
+        print(f"usage: {os.path.basename(argv[0])} <digit 1-9>", file=sys.stderr)
+        return 2
+    key = argv[1]
+    now = tap_now()
+    digit, last, ts = load_state()
+    if last == key and now - ts < 0.15:
+        return 0
+    backend = detect_backend()
+    if backend == "none":
+        return 0
+    if "orca" in active_class(backend).lower():
+        if digit == key:
+            send(backend, "CTRL", "Page_Down")
+        else:
+            send(backend, "CTRL SHIFT", key)
+        save_state(key, key, now)
+    else:
+        send(backend, "CTRL", key)
+        save_state(digit or "-", key, now)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

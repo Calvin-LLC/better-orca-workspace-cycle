@@ -1,0 +1,43 @@
+{
+  "manifestVersion": 1,
+  "id": "better-orca-workspace-cycle",
+  "publisher": "calvin-llc",
+  "name": "Better Workspace Cycle",
+  "version": "1.0.0",
+  "description": "Ctrl+number jumps to that workspace; pressing the current workspace's number cycles its terminal tabs.",
+  "author": {
+    "name": "Calvin-LLC",
+    "url": "https://github.com/Calvin-LLC"
+  },
+  "repository": "https://github.com/Calvin-LLC/better-orca-workspace-cycle",
+  "engines": {
+    "orca": ">=1.4.0"
+  },
+  "pluginApi": 1,
+  "main": "dist/main.js",
+  "contributes": {
+    "commands": [
+      { "id": "tap-cycle.1", "title": "Tap-cycle: workspace 1", "context": "global" },
+      { "id": "tap-cycle.2", "title": "Tap-cycle: workspace 2", "context": "global" },
+      { "id": "tap-cycle.3", "title": "Tap-cycle: workspace 3", "context": "global" },
+      { "id": "tap-cycle.4", "title": "Tap-cycle: workspace 4", "context": "global" },
+      { "id": "tap-cycle.5", "title": "Tap-cycle: workspace 5", "context": "global" },
+      { "id": "tap-cycle.6", "title": "Tap-cycle: workspace 6", "context": "global" },
+      { "id": "tap-cycle.7", "title": "Tap-cycle: workspace 7", "context": "global" },
+      { "id": "tap-cycle.8", "title": "Tap-cycle: workspace 8", "context": "global" },
+      { "id": "tap-cycle.9", "title": "Tap-cycle: workspace 9", "context": "global" }
+    ],
+    "keybindings": [
+      { "command": "tap-cycle.1", "key": "Mod+1", "when": "global" },
+      { "command": "tap-cycle.2", "key": "Mod+2", "when": "global" },
+      { "command": "tap-cycle.3", "key": "Mod+3", "when": "global" },
+      { "command": "tap-cycle.4", "key": "Mod+4", "when": "global" },
+      { "command": "tap-cycle.5", "key": "Mod+5", "when": "global" },
+      { "command": "tap-cycle.6", "key": "Mod+6", "when": "global" },
+      { "command": "tap-cycle.7", "key": "Mod+7", "when": "global" },
+      { "command": "tap-cycle.8", "key": "Mod+8", "when": "global" },
+      { "command": "tap-cycle.9", "key": "Mod+9", "when": "global" }
+    ]
+  },
+  "capabilities": [{ "kind": "workspace:read" }]
+}

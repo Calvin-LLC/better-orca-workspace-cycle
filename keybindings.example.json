@@ -8,7 +8,7 @@
     "linux": {
       "tab.selectByIndex": [],
       "workspace.selectByIndex": [
-        "Mod+1"
+        "Mod+Shift+1"
       ],
       "tab.nextTerminal": [
         "Ctrl+PageDown"

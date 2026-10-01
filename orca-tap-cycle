@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""Portable tap-cycle handler for Linux desktops other than Hyprland's Lua
+config (sway, i3, X11, GNOME, KDE). Bind Ctrl+1..9 to `orca-tap-cycle 1..9`;
+see the README. Same contract as orca-tap-cycle.ahk and orca-tap-cycle.lua.
+"""
 from __future__ import annotations
 
 import json
@@ -124,7 +128,8 @@ def main(argv: list[str]) -> int:
     backend = detect_backend()
     if backend == "none":
         return 0
-    if "orca" in active_class(backend).lower():
+    # Exact class match, so a window whose class merely contains "orca" keeps its own Ctrl+digit.
+    if "orca" in active_class(backend).lower().split():
         if digit == key:
             send(backend, "CTRL", "Page_Down")
         else:

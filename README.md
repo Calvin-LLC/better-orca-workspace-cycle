@@ -2,11 +2,11 @@
 
 One key, two jobs. Press a number and you swap to that Orca workspace. Press the same number again while you are there and you step to the next terminal tab. Press a different number and you swap again.
 
-The behavior is identical everywhere. Windows runs it through AutoHotkey v2. Linux runs `orca-tap-cycle`, a portable handler any hotkey system can invoke, with an optional zero-fork Hyprland fast path.
+The behavior is identical everywhere. Windows runs it through AutoHotkey v2. Hyprland runs it inside the compositor. Other Linux desktops use `orca-tap-cycle`, a portable handler any hotkey system can invoke.
 
 ## Behavior
 
-In Orca, Ctrl+N jumps to workspace N, or steps to the next terminal tab when N is the workspace you are already in. Everywhere else Ctrl+number does exactly what that app expects. A 150ms per-digit guard swallows key auto-repeat.
+In Orca, Ctrl+N jumps to workspace N, or steps to the next terminal tab when N is the workspace you are already in. Everywhere else Ctrl+number does exactly what that app expects.
 
 ## Orca keybindings
 
@@ -30,32 +30,29 @@ Orca reads keybindings.json at startup. Restart it after editing the file.
 | Linux, X11 | `orca-tap-cycle` with `xdotool` | Full |
 | Linux, other Wayland | `orca-tap-cycle` with `wtype` | Pass-through only. Wayland hides the focused window from scripts, so Ctrl+number keeps working in apps while tap-cycle stays inert |
 
-## Linux (portable handler)
+## Install
 
-Link `orca-tap-cycle` somewhere on `PATH`, then bind Ctrl+1 through Ctrl+9 to `orca-tap-cycle 1` through `orca-tap-cycle 9` in your desktop's global shortcut settings. The hotkey must consume the key. The handler re-emits the chord itself, so a second delivery of the original key would double-fire.
+One command per machine. Re-run it any time: it repairs itself and follows the folder if you move it.
 
-- sxhkd binds `ctrl + {1-9}` to `orca-tap-cycle {1-9}`.
-- GNOME takes one custom shortcut per digit in Settings, Keyboard.
-- KDE takes one command per digit in System Settings, Shortcuts.
-- i3 and sway take `bindsym ctrl+1 exec orca-tap-cycle 1` and friends.
+Windows (needs AutoHotkey v2):
 
-Install the tool your session needs for chords. Hyprland uses `hyprctl`, Sway uses `swaymsg` and `wtype`, X11 uses `xdotool`, other Wayland uses `wtype`.
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
 
-## Linux (Hyprland fast path)
+Linux:
 
-`orca-tap-cycle.lua` is the same state machine compiled into the compositor. Paste it at the end of your Hyprland Lua config or `dofile` it, then reload. Nothing forks per keypress, so the chord lands instantly even on a loaded box. The keybindings contract above is identical.
+```bash
+./install.sh
+```
 
-## Windows
+- **Windows:** points the login shortcut at this checkout, stops any copy running from an old path, starts the script, and checks Orca's keybindings. Double-clicking `start-tap-cycle.cmd` does the same.
+- **Hyprland with a Lua config:** writes one marked `dofile()` block into `~/.config/caelestia/hypr-user.lua` (or `~/.config/hypr/hyprland.lua`), reloads Hyprland, and confirms all nine binds are live. It runs inside the compositor, so nothing forks per keypress.
+- **Other Linux desktops:** links the portable `orca-tap-cycle` handler into `~/.local/bin`. Bind Ctrl+1 through Ctrl+9 to `orca-tap-cycle 1` through `orca-tap-cycle 9` in your shortcut settings (sway/i3: `bindsym ctrl+1 exec orca-tap-cycle 1`). The bind must consume the key; the handler re-sends it for other apps.
 
-Install AutoHotkey v2 and double-click `start-tap-cycle.cmd`. The launcher checks the per-user and per-machine install paths and then `PATH`, and it fails with a message if the exe or `orca-tap-cycle.ahk` is missing. Keep the launcher and the `.ahk` file in the same folder.
+Add `-Check` (Windows) or `--check` (Linux) to verify without changing anything, and `-Uninstall` / `--uninstall` to remove it.
 
-The hotkeys exist only while the Orca window is focused, so Ctrl+number behaves normally in every other app.
-
-Put a shortcut to `start-tap-cycle.cmd` in `shell:startup` to run it at every login.
-
-## Files
-
-`orca-tap-cycle` is the portable Linux handler. `orca-tap-cycle.lua` is the Hyprland fast path. `orca-tap-cycle.ahk` is the Windows helper and `start-tap-cycle.cmd` is its launcher. `keybindings.example.json` is the Orca keybindings reference. `docs/keybindings.md` goes deeper on the chord contract and `docs/troubleshooting.md` covers the common failures.
+The hotkeys only act while the Orca window is focused, so Ctrl+number behaves normally everywhere else. Holding a number counts as one press.
 
 ## License
 
